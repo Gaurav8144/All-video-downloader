@@ -18,15 +18,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Create download folder if not exists
+# ✅ Create downloads folder if not exists
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# ✅ Serve static files (index.html and others)
+# ✅ Serve static files (index.html and assets)
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
+app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")  # ✅ NEW LINE
 
 # ✅ Auto-delete downloaded file after delay
-def delete_file_later(path, delay=10):
+def delete_file_later(path, delay=20):
     def remove():
         time.sleep(delay)
         if os.path.exists(path):
@@ -42,23 +43,27 @@ async def download_video(request: Request):
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
 
-    # Generate random filename
+    # Generate unique filename
     filename = str(uuid.uuid4()) + ".mp4"
     filepath = os.path.join(DOWNLOAD_FOLDER, filename)
 
-    # Download using yt-dlp
     try:
-        result = subprocess.run(["yt-dlp", "-f", "best", "-o", filepath, url], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["yt-dlp", "-f", "best", "-o", filepath, url],
+            check=True,
+            capture_output=True,
+            text=True
+        )
     except subprocess.CalledProcessError as e:
         return JSONResponse(
             content={"status": "error", "message": e.stderr.strip() or "Download failed"},
             status_code=500
         )
 
-    # Auto-delete after download
+    # Schedule file deletion
     delete_file_later(filepath, delay=20)
 
     return JSONResponse({
         "status": "success",
-        "file_url": f"/{filepath}"
+        "file_url": f"/downloads/{filename}"
     })
