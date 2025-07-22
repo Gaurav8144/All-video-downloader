@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from pydantic import BaseModel
 import yt_dlp
-import uuid
 import os
 
 app = FastAPI()
 
-# CORS middleware for frontend to access backend
+# CORS (browser frontend ke liye)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,42 +16,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root route for test
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return "<h2>✅ Backend is running!</h2><p>Send a POST request to <code>/download</code> to download video.</p>"
+# HTML file serve karne ke liye
+@app.get("/")
+async def serve_home():
+    return FileResponse("index.html")
 
-# Download route
+# Model for incoming request
+class LinkRequest(BaseModel):
+    url: str
+
 @app.post("/download")
-async def download_video(request: Request):
+async def download_video(link: LinkRequest):
+    url = link.url
     try:
-        data = await request.json()
-        url = data.get("url")
-        if not url:
-            return JSONResponse(content={"status": "error", "message": "No URL provided."}, status_code=400)
-
-        # Unique filename
-        filename = f"{uuid.uuid4()}.mp4"
-        output_path = f"downloads/{filename}"
-        os.makedirs("downloads", exist_ok=True)
-
+        output_dir = "downloads"
+        os.makedirs(output_dir, exist_ok=True)
         ydl_opts = {
-            'format': 'best',
-            'outtmpl': output_path,
+            "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
+            "format": "best",
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
 
-        return {"status": "success", "file_url": f"/file/{filename}"}
-
+        file_path = os.path.abspath(filename)
+        rel_path = "/" + os.path.relpath(file_path)
+        return {"status": "success", "file_url": rel_path}
     except Exception as e:
-        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+        return {"status": "error", "message": str(e)}
 
-# File route to serve downloaded files
-@app.get("/file/{filename}")
-async def get_file(filename: str):
-    file_path = f"downloads/{filename}"
+# Video file serve karne ke liye
+@app.get("/downloads/{file_name:path}")
+async def get_file(file_name: str):
+    file_path = os.path.join("downloads", file_name)
     if os.path.exists(file_path):
-        return FileResponse(path=file_path, filename=filename, media_type='video/mp4')
-    return JSONResponse(content={"status": "error", "message": "File not found."}, status_code=404)
+        return FileResponse(file_path)
+    return JSONResponse(status_code=404, content={"message": "File not found"})
