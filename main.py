@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import yt_dlp
@@ -7,7 +7,7 @@ import os
 
 app = FastAPI()
 
-# CORS for frontend access
+# CORS for frontend JS access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,23 +15,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve frontend HTML
-@app.get("/")
+# Home Route - serve index.html
+@app.get("/", response_class=HTMLResponse)
 async def serve_home():
-    return FileResponse("index.html")
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    return HTMLResponse("<h2>⚠️ index.html not found!</h2>", status_code=500)
 
-# Data model for link input
+# Request model
 class LinkRequest(BaseModel):
     url: str
 
-# POST endpoint to download video
+# Video download route
 @app.post("/download")
 async def download_video(link: LinkRequest):
     url = link.url
     try:
         output_dir = "downloads"
         os.makedirs(output_dir, exist_ok=True)
-        
+
         ydl_opts = {
             "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
             "format": "best",
@@ -41,14 +43,12 @@ async def download_video(link: LinkRequest):
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
 
-        # Make downloadable link
-        file_url = f"/downloads/{os.path.basename(filename)}"
-        return {"status": "success", "file_url": file_url}
-    
+        rel_path = "/" + os.path.relpath(filename)
+        return {"status": "success", "file_url": rel_path}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Serve downloaded files
+# Serve downloaded file
 @app.get("/downloads/{file_name:path}")
 async def get_file(file_name: str):
     file_path = os.path.join("downloads", file_name)
