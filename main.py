@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,7 +7,7 @@ import os
 
 app = FastAPI()
 
-# CORS for frontend JS access
+# CORS allow
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,35 +15,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Home Route - serve index.html
-@app.get("/", response_class=HTMLResponse)
+# Serve index.html
+@app.get("/")
 async def serve_home():
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return HTMLResponse("<h2>⚠️ index.html not found!</h2>", status_code=500)
+    return HTMLResponse("<h3>⚠️ index.html not found!</h3>", status_code=404)
 
-# Request model
+# Incoming URL model
 class LinkRequest(BaseModel):
     url: str
 
-# Video download route
+# Download video
 @app.post("/download")
 async def download_video(link: LinkRequest):
     url = link.url
     try:
         output_dir = "downloads"
         os.makedirs(output_dir, exist_ok=True)
-
         ydl_opts = {
             "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
             "format": "best",
         }
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-
-        rel_path = "/" + os.path.relpath(filename)
+        file_path = os.path.abspath(filename)
+        rel_path = "/" + os.path.relpath(file_path)
         return {"status": "success", "file_url": rel_path}
     except Exception as e:
         return {"status": "error", "message": str(e)}
