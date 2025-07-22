@@ -1,55 +1,64 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import yt_dlp
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 import os
+import uuid
+import subprocess
+import threading
+import time
 
 app = FastAPI()
 
-# CORS allow
+# ✅ CORS (Allow frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all for simplicity
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve index.html
-@app.get("/")
-async def serve_home():
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    return HTMLResponse("<h3>⚠️ index.html not found!</h3>", status_code=404)
+# ✅ Create download folder if not exists
+DOWNLOAD_FOLDER = "downloads"
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# Incoming URL model
-class LinkRequest(BaseModel):
-    url: str
+# ✅ Serve static files (index.html and others)
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
-# Download video
+# ✅ Auto-delete downloaded file after delay
+def delete_file_later(path, delay=10):
+    def remove():
+        time.sleep(delay)
+        if os.path.exists(path):
+            os.remove(path)
+    threading.Thread(target=remove).start()
+
+# ✅ Video downloader route
 @app.post("/download")
-async def download_video(link: LinkRequest):
-    url = link.url
-    try:
-        output_dir = "downloads"
-        os.makedirs(output_dir, exist_ok=True)
-        ydl_opts = {
-            "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
-            "format": "best",
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-        file_path = os.path.abspath(filename)
-        rel_path = "/" + os.path.relpath(file_path)
-        return {"status": "success", "file_url": rel_path}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+async def download_video(request: Request):
+    data = await request.json()
+    url = data.get("url")
 
-# Serve downloaded file
-@app.get("/downloads/{file_name:path}")
-async def get_file(file_name: str):
-    file_path = os.path.join("downloads", file_name)
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    return JSONResponse(status_code=404, content={"message": "File not found"})
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    # Generate random filename
+    filename = str(uuid.uuid4()) + ".mp4"
+    filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+
+    # Download using yt-dlp
+    try:
+        result = subprocess.run(["yt-dlp", "-f", "best", "-o", filepath, url], check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        return JSONResponse(
+            content={"status": "error", "message": e.stderr.strip() or "Download failed"},
+            status_code=500
+        )
+
+    # Auto-delete after download
+    delete_file_later(filepath, delay=20)
+
+    return JSONResponse({
+        "status": "success",
+        "file_url": f"/{filepath}"
+    })
