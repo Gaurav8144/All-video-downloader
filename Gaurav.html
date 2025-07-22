@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All-in-One Video Downloader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1e90ff, #ff0000);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-top: 40px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      color: white;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    #topAd {
+      width: 100%;
+      height: 90px;
+      background-color: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: bold;
+      color: black;
+    }
+
+    #smallAds {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .adBox {
+      width: 90px;
+      height: 90px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .adBox:hover {
+      transform: scale(1.1);
+      background-color: white;
+      color: black;
+    }
+
+    input {
+      padding: 12px;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      margin-top: 15px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #00ff88;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #00dd77;
+    }
+
+    .msg {
+      margin-top: 20px;
+      font-size: 16px;
+      color: yellow;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="topAd">🎯 Your Ad Here</div>
+
+  <div id="smallAds">
+    <div class="adBox">Ad 1</div>
+    <div class="adBox">Ad 2</div>
+    <div class="adBox">Ad 3</div>
+  </div>
+
+  <div class="glass">
+    <h1>🚀 Video Downloader</h1>
+    <input type="text" id="videoLink" placeholder="Paste video link (YouTube, Instagram, etc.)" />
+    <button onclick="downloadVideo()">Download</button>
+    <div class="msg" id="message"></div>
+  </div>
+
+  <script>
+    async function downloadVideo() {
+      const url = document.getElementById("videoLink").value.trim();
+      const msg = document.getElementById("message");
+
+      if (!url) {
+        msg.innerHTML = "⚠️ Please paste a video link!";
+        return;
+      }
+
+      msg.innerHTML = "⏳ Downloading...";
+
+      try {
+        const res = await fetch("https://your-backend-name.onrender.com/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+          const a = document.createElement("a");
+          a.href = "https://your-backend-name.onrender.com" + data.file_url;
+          a.download = "";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          msg.innerHTML = "✅ Download ready!";
+        } else {
+          msg.innerHTML = "❌ Error: " + data.message;
+        }
+      } catch (err) {
+        msg.innerHTML = "🔥 Something went wrong!";
+      }
+    }
+  </script>
+</body>
+  </html>
