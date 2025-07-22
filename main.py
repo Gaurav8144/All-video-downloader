@@ -1,69 +1,83 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import os
-import uuid
+from fastapi.middleware.cors import CORSMiddleware
 import subprocess
+import uuid
+import os
 import threading
 import time
 
 app = FastAPI()
 
-# ✅ CORS (Allow frontend)
+# CORS (in case you want frontend from other origin)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all for simplicity
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Create downloads folder if not exists
-DOWNLOAD_FOLDER = "downloads"
+# Paths
+BASE_DIR = os.path.dirname(__file__)
+DOWNLOAD_FOLDER = os.path.join(BASE_DIR, "downloads")
+HTML_FILE = os.path.join(BASE_DIR, "index.html")
+
+# Create downloads folder if it doesn't exist
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# ✅ Serve static files (index.html and assets)
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
-app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")  # ✅ NEW LINE
+# Serve downloads folder statically
+app.mount("/downloads", StaticFiles(directory=DOWNLOAD_FOLDER), name="downloads")
 
-# ✅ Auto-delete downloaded file after delay
-def delete_file_later(path, delay=20):
-    def remove():
+# Serve index.html
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    with open(HTML_FILE, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+# Automatically delete file after delay
+def delete_file_later(path, delay=30):
+    def delete():
         time.sleep(delay)
         if os.path.exists(path):
             os.remove(path)
-    threading.Thread(target=remove).start()
+    threading.Thread(target=delete).start()
 
-# ✅ Video downloader route
+
+# Download Endpoint
 @app.post("/download")
 async def download_video(request: Request):
-    data = await request.json()
-    url = data.get("url")
-
-    if not url:
-        raise HTTPException(status_code=400, detail="URL is required")
-
-    # Generate unique filename
-    filename = str(uuid.uuid4()) + ".mp4"
-    filepath = os.path.join(DOWNLOAD_FOLDER, filename)
-
     try:
+        data = await request.json()
+        url = data.get("url")
+
+        if not url:
+            return JSONResponse({"status": "error", "message": "URL is missing"}, status_code=400)
+
+        filename = str(uuid.uuid4()) + ".mp4"
+        filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+
+        print(f"[INFO] Downloading: {url}")
+        print(f"[INFO] Saving as: {filepath}")
+
         result = subprocess.run(
             ["yt-dlp", "-f", "best", "-o", filepath, url],
-            check=True,
             capture_output=True,
             text=True
         )
-    except subprocess.CalledProcessError as e:
-        return JSONResponse(
-            content={"status": "error", "message": e.stderr.strip() or "Download failed"},
-            status_code=500
-        )
 
-    # Schedule file deletion
-    delete_file_later(filepath, delay=20)
+        if result.returncode != 0:
+            print("[ERROR]", result.stderr)
+            return JSONResponse({"status": "error", "message": result.stderr.strip()}, status_code=500)
 
-    return JSONResponse({
-        "status": "success",
-        "file_url": f"/downloads/{filename}"
-    })
+        delete_file_later(filepath)
+
+        return JSONResponse({
+            "status": "success",
+            "file_url": f"/downloads/{filename}"
+        })
+
+    except Exception as e:
+        print("[EXCEPTION]", str(e))
+        return JSONResponse({"status": "error", "message": "Unknown error occurred."}, status_code=500)
