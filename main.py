@@ -1,14 +1,17 @@
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi import FastAPI, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import os
 import uuid
 import subprocess
 
 app = FastAPI()
 
-# CORS setup (for local testing or frontend interaction)
+# Create downloads folder if it doesn't exist
+if not os.path.exists("downloads"):
+    os.makedirs("downloads")
+
+# CORS setup (optional but recommended)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,29 +19,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static frontend
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
-# Ensure download folder exists
-DOWNLOAD_FOLDER = "downloads"
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+@app.get("/", response_class=HTMLResponse)
+async def serve_homepage():
+    try:
+        with open("static/index.html", "r") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except:
+        return HTMLResponse(content="<h1>Index file not found</h1>", status_code=404)
 
 @app.post("/download")
-async def download_video(url: str = Form(...)):
+async def download_video(request: Request):
+    form = await request.form()
+    url = form.get("url")
+    if not url:
+        return JSONResponse({"error": "URL is required"}, status_code=400)
+
+    video_id = str(uuid.uuid4())
+    output_path = f"downloads/{video_id}.mp4"
+
     try:
-        filename = f"{uuid.uuid4()}.mp4"
-        filepath = os.path.join(DOWNLOAD_FOLDER, filename)
-
-        # Run yt-dlp to download the video
-        subprocess.run(["yt-dlp", "-o", filepath, url], check=True)
-
-        return {"filename": filename}
+        # Download video using yt-dlp
+        subprocess.run(["yt-dlp", "-o", output_path, url], check=True)
+        return FileResponse(output_path, media_type="video/mp4", filename="video.mp4")
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.get("/video/{filename}")
-async def get_video(filename: str):
-    filepath = os.path.join(DOWNLOAD_FOLDER, filename)
-    if os.path.exists(filepath):
-        return FileResponse(path=filepath, media_type='video/mp4', filename=filename)
-    return JSONResponse(status_code=404, content={"error": "File not found"})
+        return JSONResponse({"error": str(e)}, status_code=500)
