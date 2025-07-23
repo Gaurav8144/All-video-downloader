@@ -86,10 +86,9 @@
   </style>
 </head>
 <body>
+
   <!-- Banner Ad Area -->
-  <div id="topAd">
-    Banner Ad Space
-  </div>
+  <div id="topAd">Banner Ad Space</div>
 
   <!-- Small Horizontal Ads -->
   <div id="smallAds">
@@ -119,7 +118,7 @@
       msg.innerHTML = "<b style='color: yellow;'>Downloading started...</b>";
 
       try {
-        const res = await fetch("/download", {
+        const res = await fetch("https://all-video-downloader-synl.onrender.com/download", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url })
@@ -129,20 +128,25 @@
 
         if (data.status === "success") {
           const a = document.createElement("a");
-          a.href = data.file_url;
+          a.href = "https://all-video-downloader-synl.onrender.com" + data.file_url;
           a.download = "";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
 
           msg.innerHTML = "<b style='color: lightgreen;'>Download confirmed.</b>";
+        } else if (data.error) {
+          msg.innerHTML = "<b style='color: orange;'>Error: " + data.error + "</b>";
         } else {
-          msg.innerHTML = "<b style='color: orange;'>Error: " + (data.message || "Unknown error occurred.") + "</b>";
+          msg.innerHTML = "<b style='color: red;'>Unknown error occurred.</b>";
         }
+
       } catch (err) {
         msg.innerHTML = "<b style='color: red;'>Something went wrong.</b>";
+        console.error(err);
       }
     }
   </script>
+
 </body>
 </html>
