@@ -25,11 +25,13 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 # Serve static files like index.html
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Serve homepage from static/index.html
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    try:
+        with open("static/index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Homepage load error")
 
 # Auto delete file after 10 sec
 def delete_file_later(path, delay=10):
@@ -37,38 +39,44 @@ def delete_file_later(path, delay=10):
         time.sleep(delay)
         if os.path.exists(path):
             os.remove(path)
-    threading.Thread(target=remove).start()
+    threading.Thread(target=remove, daemon=True).start()
 
 @app.post("/download")
 async def download_video(request: Request):
-    data = await request.json()
-    url = data.get("url")
-
-    if not url:
-        raise HTTPException(status_code=400, detail="URL is required")
-
-    filename = f"{uuid.uuid4()}.mp4"
-    filepath = os.path.join(DOWNLOAD_FOLDER, filename)
-
     try:
-        # yt-dlp command to download video
-        subprocess.run(["yt-dlp", "-o", filepath, url], check=True)
-    except subprocess.CalledProcessError as e:
-        return JSONResponse(
-            content={"status": "error", "message": "Download failed", "details": str(e)},
-            status_code=500,
+        data = await request.json()
+        url = data.get("url")
+
+        if not url:
+            raise HTTPException(status_code=400, detail="❌ URL required")
+
+        filename = f"{uuid.uuid4()}.mp4"
+        filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+
+        # yt-dlp command
+        result = subprocess.run(
+            ["yt-dlp", "-f", "mp4", "-o", filepath, url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
         )
 
-    delete_file_later(filepath, delay=10)
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Download failed: {result.stderr.decode()}")
 
-    # Return file URL (Render will host it on domain)
-    return JSONResponse(content={
-        "status": "success",
-        "file_url": f"/downloaded/{filename}",
-        "filename": filename
-    })
+        delete_file_later(filepath, delay=10)
 
-# Serve downloaded video temporarily
+        return {
+            "status": "✅ success",
+            "file_url": f"/downloaded/{filename}",
+            "filename": filename
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "❌ error", "message": str(e)}
+        )
+
 @app.get("/downloaded/{filename}", response_class=FileResponse)
 async def serve_file(filename: str):
     path = os.path.join(DOWNLOAD_FOLDER, filename)
