@@ -4,50 +4,146 @@
   <title>All-in-One Video Downloader</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
+      margin: 0;
+      padding: 0;
       background: linear-gradient(to right, #1e90ff, #ff0000);
-      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
+
+    #topAd {
+      width: 100%;
+      height: 90px;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: bold;
+      font-size: 20px;
+      border-bottom: 2px solid #ccc;
+    }
+
+    #smallAds {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
       margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .adBox {
+      width: 100px;
+      height: 100px;
+      background-color: white;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: black;
+      font-size: 14px;
+    }
+
+    .container {
+      margin-top: 30px;
+    }
+
+    input {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #aaa;
+      margin-top: 20px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: green;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #10c11e;
+    }
+
+    .msg {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #fff;
     }
   </style>
 </head>
 <body>
-  <h1 style="color:white;">Video Downloader</h1>
-  <input type="text" id="urlInput" placeholder="Paste video URL here" />
-  <br>
-  <button onclick="download()">Download</button>
-  <p id="message" style="color: white;"></p>
+
+  <!-- Banner Ad Area -->
+  <div id="topAd">Banner Ad Space</div>
+
+  <!-- Small Horizontal Ads -->
+  <div id="smallAds">
+    <div class="adBox">Ad 1</div>
+    <div class="adBox">Ad 2</div>
+    <div class="adBox">Ad 3</div>
+  </div>
+
+  <!-- Main Downloader Section -->
+  <div class="container">
+    <input type="text" id="videoLink" placeholder="Paste any video link (Instagram, YouTube, etc.)" />
+    <br>
+    <button onclick="downloadVideo()">Download</button>
+    <div class="msg" id="message"></div>
+  </div>
 
   <script>
-    async function download() {
-      const url = document.getElementById("urlInput").value;
-      const message = document.getElementById("message");
-      message.innerText = "Downloading...";
+    async function downloadVideo() {
+      const url = document.getElementById("videoLink").value.trim();
+      const msg = document.getElementById("message");
+      msg.innerHTML = "<b style='color: yellow;'>Downloading started...</b>";
 
-      const formData = new FormData();
-      formData.append("url", url);
+      if (!url) {
+        msg.innerHTML = "<b style='color: orange;'>Please paste a video link first!</b>";
+        return;
+      }
 
       try {
         const res = await fetch("/download", {
           method: "POST",
-          body: formData
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
         });
 
         const data = await res.json();
-        if (data.filename) {
-          message.innerHTML = `✅ Done: <a href="/video/${data.filename}" download>Click here to download</a>`;
+
+        if (data.status === "success") {
+          const a = document.createElement("a");
+          a.href = data.file_url;
+          a.download = "";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          msg.innerHTML = "<b style='color: lightgreen;'>Download confirmed.</b>";
+        } else if (data.error) {
+          msg.innerHTML = "<b style='color: orange;'>Error: " + data.error + "</b>";
         } else {
-          message.innerText = "❌ Download failed.";
+          msg.innerHTML = "<b style='color: red;'>Something went wrong.</b>";
         }
+
       } catch (err) {
-        message.innerText = "❌ Error occurred: " + err.message;
+        msg.innerHTML = "<b style='color: red;'>Something went wrong.</b>";
       }
     }
   </script>
+
 </body>
-</html>
+  </html>
