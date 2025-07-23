@@ -34,6 +34,11 @@ async def read_index():
     except Exception:
         raise HTTPException(status_code=500, detail="Homepage load error")
 
+# ✅ Serve robots.txt
+@app.get("/robots.txt", include_in_schema=False)
+async def serve_robots():
+    return FileResponse("robots.txt", media_type="text/plain")
+
 # ✅ Auto delete file after 10 sec
 def delete_file_later(path, delay=10):
     def remove():
