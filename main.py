@@ -10,7 +10,7 @@ import time
 
 app = FastAPI()
 
-# CORS for frontend access
+# ✅ CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,22 +18,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Folder for temporary video downloads
+# ✅ Folder for temporary video downloads
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# Serve static files like index.html
+# ✅ Mount static folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ✅ Serve homepage
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
     try:
         with open("static/index.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception as e:
+            return HTMLResponse(content=f.read(), status_code=200)
+    except Exception:
         raise HTTPException(status_code=500, detail="Homepage load error")
 
-# Auto delete file after 10 sec
+# ✅ Auto delete file after 10 sec
 def delete_file_later(path, delay=10):
     def remove():
         time.sleep(delay)
@@ -41,6 +42,7 @@ def delete_file_later(path, delay=10):
             os.remove(path)
     threading.Thread(target=remove, daemon=True).start()
 
+# ✅ Download route
 @app.post("/download")
 async def download_video(request: Request):
     try:
@@ -53,7 +55,6 @@ async def download_video(request: Request):
         filename = f"{uuid.uuid4()}.mp4"
         filepath = os.path.join(DOWNLOAD_FOLDER, filename)
 
-        # yt-dlp command
         result = subprocess.run(
             ["yt-dlp", "-f", "mp4", "-o", filepath, url],
             stdout=subprocess.PIPE,
@@ -66,7 +67,7 @@ async def download_video(request: Request):
         delete_file_later(filepath, delay=10)
 
         return {
-            "status": "✅ success",
+            "status": "success",
             "file_url": f"/downloaded/{filename}",
             "filename": filename
         }
@@ -74,9 +75,10 @@ async def download_video(request: Request):
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"status": "❌ error", "message": str(e)}
+            content={"status": "error", "message": str(e)}
         )
 
+# ✅ Serve downloaded video
 @app.get("/downloaded/{filename}", response_class=FileResponse)
 async def serve_file(filename: str):
     path = os.path.join(DOWNLOAD_FOLDER, filename)
