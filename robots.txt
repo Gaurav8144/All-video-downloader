@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://all-video-downloader-synl.onrender.com/sitemap.xml
