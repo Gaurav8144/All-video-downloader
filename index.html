@@ -1,112 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>All-in-One Video Downloader</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: Arial;
+      text-align: center;
       margin: 0;
       padding: 0;
-      background: linear-gradient(135deg, #1e90ff, #ff4c4c);
+      background: linear-gradient(to right, #1e90ff, #ff0000);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #topAd {
+      width: 100%;
+      height: 90px;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: bold;
+      font-size: 20px;
+      border-bottom: 2px solid #ccc;
+    }
+
+    #smallAds {
       display: flex;
       justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .adBox {
+      width: 100px;
+      height: 100px;
+      background-color: white;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      display: flex;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
+      color: black;
+      font-size: 14px;
     }
 
     .container {
-      background-color: #ffffffcc;
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      text-align: center;
-      max-width: 500px;
-      width: 90%;
+      margin-top: 30px;
     }
 
-    h1 {
-      color: #333;
-      margin-bottom: 20px;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #1e90ff;
-      border-radius: 10px;
+    input {
+      padding: 10px;
+      width: 300px;
       font-size: 16px;
-      margin-bottom: 20px;
-      outline: none;
+      border-radius: 5px;
+      border: 1px solid #aaa;
+      margin-top: 20px;
     }
 
     button {
-      background-color: #1e90ff;
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: green;
       color: white;
       border: none;
-      padding: 12px 25px;
-      border-radius: 10px;
-      font-size: 16px;
+      border-radius: 5px;
       cursor: pointer;
-      transition: background 0.3s ease;
     }
 
     button:hover {
-      background-color: #0d74d1;
+      background-color: #10c11e;
     }
 
-    #status {
+    .msg {
       margin-top: 20px;
-      color: #333;
-      font-weight: 500;
+      font-size: 18px;
+      color: #fff;
     }
   </style>
 </head>
 <body>
 
+  <!-- Banner Ad Area -->
+  <div id="topAd">
+    Banner Ad Space
+  </div>
+
+  <!-- Small Horizontal Ads -->
+  <div id="smallAds">
+    <div class="adBox">Ad 1</div>
+    <div class="adBox">Ad 2</div>
+    <div class="adBox">Ad 3</div>
+  </div>
+
+  <!-- Main Downloader Section -->
   <div class="container">
-    <h1>All-in-One Video Downloader</h1>
-    <input type="text" id="videoUrl" placeholder="Paste video URL here (YouTube, Instagram...)">
+    <input type="text" id="videoLink" placeholder="Paste any video link (Instagram, YouTube, etc.)" />
+    <br>
     <button onclick="downloadVideo()">Download</button>
-    <div id="status"></div>
+    <div class="msg" id="message"></div>
   </div>
 
   <script>
     async function downloadVideo() {
-      const url = document.getElementById('videoUrl').value.trim();
-      const statusDiv = document.getElementById('status');
+      const url = document.getElementById("videoLink").value.trim();
+      const msg = document.getElementById("message");
 
       if (!url) {
-        statusDiv.textContent = "⚠️ Please enter a video URL!";
+        msg.innerHTML = "<b style='color: orange;'>Please paste a video link first!</b>";
         return;
       }
 
-      statusDiv.textContent = "⏳ Downloading... Please wait.";
+      msg.innerHTML = "<b style='color: yellow;'>Downloading started...</b>";
 
       try {
-        const response = await fetch('/download', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ url: url }),
+        const res = await fetch("/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
         });
 
-        const result = await response.json();
+        const data = await res.json();
 
-        if (response.ok) {
-          const a = document.createElement('a');
-          a.href = `/downloads/${result.filename}`;
-          a.download = result.filename;
+        if (data.status === "success") {
+          const a = document.createElement("a");
+          a.href = data.file_url;
+          a.download = data.filename;
+          document.body.appendChild(a);
           a.click();
-          statusDiv.textContent = "✅ Download complete!";
-        } else {
-          statusDiv.textContent = `❌ Error: ${result.detail || 'Failed to download'}`;
-        }
+          document.body.removeChild(a);
 
+          msg.innerHTML = "<b style='color: lightgreen;'>Download confirmed.</b>";
+        } else {
+          msg.innerHTML = "<b style='color: orange;'>Error: " + data.message + "</b>";
+        }
       } catch (err) {
-        statusDiv.textContent = `❌ Error: ${err.message}`;
+        msg.innerHTML = "<b style='color: red;'>Something went wrong.</b>";
       }
     }
   </script>
