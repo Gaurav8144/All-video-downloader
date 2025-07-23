@@ -1,1 +1,2 @@
-
+mkdir static
+echo "<h1>Hello from static folder</h1>" > static/index.html
