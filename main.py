@@ -1,17 +1,14 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+import yt_dlp
 import os
 import uuid
-import subprocess
 
 app = FastAPI()
 
-# Create downloads folder if it doesn't exist
-if not os.path.exists("downloads"):
-    os.makedirs("downloads")
-
-# CORS setup (optional but recommended)
+# Allow CORS (for frontend compatibility)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,28 +16,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static files (HTML, CSS)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Homepage serving index.html
 @app.get("/", response_class=HTMLResponse)
-async def serve_homepage():
-    try:
-        with open("static/index.html", "r") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content)
-    except:
-        return HTMLResponse(content="<h1>Index file not found</h1>", status_code=404)
+async def serve_home():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
+# Video download route
 @app.post("/download")
-async def download_video(request: Request):
-    form = await request.form()
-    url = form.get("url")
-    if not url:
-        return JSONResponse({"error": "URL is required"}, status_code=400)
-
-    video_id = str(uuid.uuid4())
-    output_path = f"downloads/{video_id}.mp4"
-
+async def download_video(url: str = Form(...)):
     try:
-        # Download video using yt-dlp
-        subprocess.run(["yt-dlp", "-o", output_path, url], check=True)
-        return FileResponse(output_path, media_type="video/mp4", filename="video.mp4")
+        video_id = str(uuid.uuid4())
+        output_path = f"downloads/{video_id}.%(ext)s"
+
+        ydl_opts = {
+            'outtmpl': output_path,
+            'format': 'mp4',
+            'quiet': True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+
+        return FileResponse(filename, media_type='video/mp4', filename=os.path.basename(filename))
+
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return {"error": str(e)}
