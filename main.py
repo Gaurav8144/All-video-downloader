@@ -1,12 +1,16 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import yt_dlp
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import os
+import uuid
+import subprocess
+import threading
+import time
 
 app = FastAPI()
 
+# Allow all CORS (Frontend access)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,48 +18,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve HTML
-@app.get("/")
-async def home():
-    return FileResponse("index.html")
+# Folder to save downloaded files temporarily
+DOWNLOAD_FOLDER = "downloads"
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# Pydantic model for incoming JSON
-class LinkRequest(BaseModel):
-    url: str
+# Serve downloads folder as static files
+app.mount("/downloads", StaticFiles(directory=DOWNLOAD_FOLDER), name="downloads")
+
+# Delete file after delay (e.g. 60 seconds)
+def delete_file_later(path, delay=60):
+    def remove():
+        time.sleep(delay)
+        if os.path.exists(path):
+            os.remove(path)
+    threading.Thread(target=remove).start()
 
 @app.post("/download")
-async def download_video(link: LinkRequest):
-    url = link.url
+async def download_video(request: Request):
+    data = await request.json()
+    url = data.get("url")
+
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    filename = str(uuid.uuid4()) + ".mp4"
+    filepath = os.path.join(DOWNLOAD_FOLDER, filename)
+
     try:
-        output_dir = "downloads"
-        os.makedirs(output_dir, exist_ok=True)
+        # Download video using yt-dlp
+        subprocess.run(["yt-dlp", "-o", filepath, url], check=True)
+    except subprocess.CalledProcessError as e:
+        return JSONResponse(content={"error": "Download failed", "details": str(e)}, status_code=500)
 
-        # Prepare yt-dlp options
-        ydl_opts = {
-            "outtmpl": f"{output_dir}/%(title).80s.%(ext)s",
-            "format": "bv*+ba/best",
-            "merge_output_format": "mp4",
-        }
+    # Schedule file deletion after 60 seconds
+    delete_file_later(filepath, delay=60)
 
-        # If cookies.txt exists, use it
-        if os.path.exists("cookies.txt"):
-            ydl_opts["cookiefile"] = "cookies.txt"
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-
-        # Path to return to frontend
-        rel_path = "/" + os.path.relpath(filename).replace("\\", "/")
-        return {"status": "success", "file_url": rel_path}
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-# Serve downloaded file
-@app.get("/downloads/{file_name:path}")
-async def get_file(file_name: str):
-    file_path = os.path.join("downloads", file_name)
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    return JSONResponse(status_code=404, content={"message": "File not found"})
+    # Return public URL
+    file_url = f"/downloads/{filename}"
+    return JSONResponse(content={
+        "status": "success",
+        "file_url": file_url
+    })
