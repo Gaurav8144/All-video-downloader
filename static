@@ -1,2 +1,11 @@
-mkdir static
-echo "<h1>Hello from static folder</h1>" > static/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Downloader</title>
+</head>
+<body>
+  <h1>Hello! I am static electricity ⚡</h1>
+  <p>This is index.html served from the static folder!</p>
+</body>
+</html>
