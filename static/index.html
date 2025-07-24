@@ -4,12 +4,7 @@
   <!-- Basic Meta -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Page Title -->
   <title>YouTube & Instagram Video Downloader - Free HD Video Save</title>
-
-  <!-- ✅ Google Site Verification -->
-  <meta name="google-site-verification" content="ODp-h1vorO8rVuwFsXpT99aWFfU3ZLRdoFfsSaB8bqI" />
 
   <!-- ✅ SEO Meta Tags -->
   <meta name="description" content="Download videos from YouTube, Instagram, Facebook, and more in HD for free. No registration. Fast & secure downloader." />
@@ -17,7 +12,10 @@
   <meta name="robots" content="index, follow" />
   <meta name="author" content="All-in-One Video Downloader" />
 
-  <!-- ✅ Open Graph (for Social Sharing) -->
+  <!-- ✅ Google Site Verification -->
+  <meta name="google-site-verification" content="ODp-h1vorO8rVuwFsXpT99aWFfU3ZLRdoFfsSaB8bqI" />
+
+  <!-- ✅ Open Graph for Social Sharing -->
   <meta property="og:title" content="All-in-One Video Downloader - Save Videos Easily" />
   <meta property="og:description" content="Download HD videos from YouTube, Instagram and more with one click." />
   <meta property="og:url" content="https://all-video-downloader-synl.onrender.com" />
@@ -27,7 +25,7 @@
   <!-- ✅ Favicon -->
   <link rel="icon" href="/favicon.ico" />
 
-  <!-- CSS Styling -->
+  <!-- CSS -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -116,28 +114,30 @@
 </head>
 <body>
 
-  <!-- ✅ Banner Ad from Adsterra -->
+  <!-- ✅ Adsterra Ad Section START -->
   <div id="topAd">
+    <!-- ✅ Adsterra Script (300x250) -->
     <script type="text/javascript">
       atOptions = {
-        'key' : '57298040aa9e5372f1715621e5fc9cd0',
-        'format' : 'iframe',
-        'height' : 250,
-        'width' : 300,
-        'params' : {}
+        'key': '57298040aa9e5372f1715621e5fc9cd0',
+        'format': 'iframe',
+        'height': 250,
+        'width': 300,
+        'params': {}
       };
     </script>
     <script type="text/javascript" src="//www.highperformanceformat.com/57298040aa9e5372f1715621e5fc9cd0/invoke.js"></script>
   </div>
+  <!-- ✅ Adsterra Ad Section END -->
 
-  <!-- Small Ads Placeholder -->
+  <!-- Optional: Dummy Ad Boxes -->
   <div id="smallAds">
     <div class="adBox">Ad 1</div>
     <div class="adBox">Ad 2</div>
     <div class="adBox">Ad 3</div>
   </div>
 
-  <!-- Main Container -->
+  <!-- ✅ Main Downloader UI -->
   <div class="container">
     <input type="text" id="videoLink" placeholder="Paste any video link (Instagram, YouTube, etc.)" />
     <br />
@@ -145,7 +145,7 @@
     <div class="msg" id="message"></div>
   </div>
 
-  <!-- JavaScript -->
+  <!-- ✅ JavaScript Logic -->
   <script>
     async function downloadVideo() {
       const url = document.getElementById("videoLink").value.trim();
