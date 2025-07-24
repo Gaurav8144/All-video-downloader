@@ -6,23 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>YouTube & Instagram Video Downloader - Free HD Video Save</title>
 
-  <!-- ✅ SEO Meta Tags -->
+  <!-- SEO Meta Tags -->
   <meta name="description" content="Download videos from YouTube, Instagram, Facebook, and more in HD for free. No registration. Fast & secure downloader." />
   <meta name="keywords" content="YouTube video downloader, Instagram downloader, video download HD, save videos online, all video downloader, facebook video download" />
   <meta name="robots" content="index, follow" />
   <meta name="author" content="All-in-One Video Downloader" />
-
-  <!-- ✅ Google Site Verification -->
   <meta name="google-site-verification" content="ODp-h1vorO8rVuwFsXpT99aWFfU3ZLRdoFfsSaB8bqI" />
 
-  <!-- ✅ Open Graph for Social Sharing -->
+  <!-- Open Graph -->
   <meta property="og:title" content="All-in-One Video Downloader - Save Videos Easily" />
   <meta property="og:description" content="Download HD videos from YouTube, Instagram and more with one click." />
   <meta property="og:url" content="https://all-video-downloader-synl.onrender.com" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://all-video-downloader-synl.onrender.com/logo.png" />
 
-  <!-- ✅ Favicon -->
   <link rel="icon" href="/favicon.ico" />
 
   <!-- CSS -->
@@ -36,6 +33,21 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+    }
+
+    #topBannerAd {
+      width: 728px;
+      height: 90px;
+      margin: 0;
+      padding: 0;
+      background-color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
     }
 
     #smallAds {
@@ -103,14 +115,19 @@
 </head>
 <body>
 
-  <!-- Optional: Dummy Ad Boxes (Placeholder only) -->
+  <!-- ✅ Banner Placeholder (Design only, No ad script) -->
+  <div id="topBannerAd">
+    728x90 Banner Placeholder
+  </div>
+
+  <!-- Optional Dummy Ads -->
   <div id="smallAds">
     <div class="adBox">Ad 1</div>
     <div class="adBox">Ad 2</div>
     <div class="adBox">Ad 3</div>
   </div>
 
-  <!-- ✅ Main Downloader UI -->
+  <!-- ✅ Downloader UI -->
   <div class="container">
     <input type="text" id="videoLink" placeholder="Paste any video link (Instagram, YouTube, etc.)" />
     <br />
@@ -118,7 +135,7 @@
     <div class="msg" id="message"></div>
   </div>
 
-  <!-- ✅ JavaScript Logic -->
+  <!-- ✅ Script -->
   <script>
     async function downloadVideo() {
       const url = document.getElementById("videoLink").value.trim();
